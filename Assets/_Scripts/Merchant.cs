@@ -10,4 +10,9 @@ public class Merchant : MonoBehaviour
     {
         merchantText.transform.LookAt(transform.position + cam.transform.forward);
     }
+
+    public void ShowUpgradeShop()
+    {
+        merchantText.SetActive(true);
+    }
 }
