@@ -1,9 +1,11 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(Rigidbody))]
 public class MovementController : MonoBehaviour
 {
+    private bool freezeMovement = false;
     [SerializeField] Transform cameraTransform;
     [SerializeField] float moveSpeed = 5f;
     [SerializeField] float sprintMultiplier = 1.75f;
@@ -11,6 +13,12 @@ public class MovementController : MonoBehaviour
     [SerializeField] float mass = 1f;
     [SerializeField] float turnSpeed = 800f;
     [SerializeField] float groundCheckDistance = 0.5f;
+    float stamina = 40f;
+    [SerializeField] float maxStamina = 40f;
+    [SerializeField] float staminaCostPerSecond = 30f;
+    [SerializeField] float staminaRegenPerSecond = 5f;
+    [SerializeField] Slider staminaSlider;
+    [SerializeField] Color staminaSliderColor = Color.gray;
     [SerializeField] PhysicsMaterial playerPhysicsMaterial;
     [SerializeField] LayerMask groundLayer;  // Set this in inspector to specific ground/asset layers, NOT "Everything"
     PlayerInput playerInput;
@@ -27,6 +35,10 @@ public class MovementController : MonoBehaviour
 
     void Start()
     {
+        if (staminaSlider != null && staminaSlider.fillRect != null)
+        {
+            staminaSlider.fillRect.GetComponent<Image>().color = staminaSliderColor;
+        }
         playerInput = GetComponent<PlayerInput>();
         moveAction = playerInput.actions["Move"];
         sprintAction = playerInput.actions["Sprint"];
@@ -43,6 +55,12 @@ public class MovementController : MonoBehaviour
 
     void Update()
     {
+        if (freezeMovement)
+        {
+            // Don't read input or move if movement is frozen
+            movementDirection = Vector3.zero;
+            return;
+        }
         ReadInputAndCalculateDirection();
     }
 
@@ -51,11 +69,29 @@ public class MovementController : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Sprint input affects speed
-        bool sprinting = false;
-        if (sprintAction != null)
+        bool wantsSprint = sprintAction != null && sprintAction.IsPressed();
+        bool sprinting = wantsSprint && stamina > 0f && movementDirection != Vector3.zero;
+
+        if (sprinting)
         {
-            sprinting = sprintAction.ReadValue<float>() > 0.5f;
+            stamina = Mathf.Clamp(stamina - staminaCostPerSecond * Time.fixedDeltaTime, 0, maxStamina);
+            if (stamina <= 0f)
+            {
+                sprinting = false;
+            }
+        }
+        else
+        {
+            stamina = Mathf.Clamp(stamina + staminaRegenPerSecond * Time.fixedDeltaTime, 0, maxStamina);
+        }
+
+        Debug.Log($"Stamina: {stamina:F1}/{maxStamina}");
+
+        if (staminaSlider != null)
+        {
+            staminaSlider.minValue = 0f;
+            staminaSlider.maxValue = maxStamina;
+            staminaSlider.value = stamina;
         }
 
         float speed = moveSpeed * (sprinting ? sprintMultiplier : 1f);
@@ -149,5 +185,21 @@ public class MovementController : MonoBehaviour
         {
             colliders[i].material = lowFrictionMaterial;
         }
+    }
+
+    public void SetFreezeMovement(bool freeze)
+    {
+        freezeMovement = freeze;
+    }
+
+    public void IncreaseMaxStamina(int amount)
+    {
+        maxStamina += amount;
+        stamina = Mathf.Clamp(stamina, 0, maxStamina);
+    }
+
+    public void IncreaseStaminaRegen(float amount)
+    {
+        staminaRegenPerSecond += amount;
     }
 }
