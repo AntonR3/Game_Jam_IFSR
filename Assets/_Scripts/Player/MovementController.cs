@@ -8,8 +8,11 @@ public class MovementController : MonoBehaviour
     [SerializeField] float moveSpeed = 5f;
     [SerializeField] float sprintMultiplier = 1.75f;
     [SerializeField] float jumpForce = 5f;
-    [SerializeField] float groundCheckDistance = 0.2f;
-    [SerializeField] LayerMask groundLayer = ~0;
+    [SerializeField] float mass = 1f;
+    [SerializeField] float turnSpeed = 800f;
+    [SerializeField] float groundCheckDistance = 0.5f;
+    [SerializeField] PhysicsMaterial playerPhysicsMaterial;
+    [SerializeField] LayerMask groundLayer;  // Set this in inspector to specific ground/asset layers, NOT "Everything"
     PlayerInput playerInput;
     InputAction moveAction;
     InputAction sprintAction;
@@ -20,6 +23,7 @@ public class MovementController : MonoBehaviour
     // Cached movement direction (calculated from input each Update,
     // applied in FixedUpdate so physics/collisions are respected)
     Vector3 movementDirection = Vector3.zero;
+    bool wasJumpPressedLastFrame = false;
 
     void Start()
     {
@@ -29,9 +33,12 @@ public class MovementController : MonoBehaviour
         jumpAction = playerInput.actions["Jump"];
 
         rb = GetComponent<Rigidbody>();
+        rb.mass = mass;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.constraints = RigidbodyConstraints.FreezeRotation;
+
+        SetupLowFrictionColliders();
     }
 
     void Update()
@@ -53,11 +60,19 @@ public class MovementController : MonoBehaviour
 
         float speed = moveSpeed * (sprinting ? sprintMultiplier : 1f);
 
-        // Apply movement with Rigidbody to enable collision response
+        // Apply movement through velocity so physics can resolve collisions.
+        Vector3 velocity = rb.linearVelocity;
+        Vector3 desiredHorizontalVelocity = movementDirection * speed;
+        velocity.x = desiredHorizontalVelocity.x;
+        velocity.z = desiredHorizontalVelocity.z;
+        rb.linearVelocity = velocity;
+
+        // Face the direction of movement on the Y axis only.
         if (movementDirection != Vector3.zero)
         {
-            Vector3 newPos = rb.position + movementDirection * speed * Time.fixedDeltaTime;
-            rb.MovePosition(newPos);
+            Quaternion targetRotation = Quaternion.LookRotation(movementDirection, Vector3.up);
+            Quaternion smoothedRotation = Quaternion.RotateTowards(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime);
+            rb.MoveRotation(Quaternion.Euler(0f, smoothedRotation.eulerAngles.y, 0f));
         }
 
         // Apply jump if requested
@@ -70,6 +85,20 @@ public class MovementController : MonoBehaviour
 
     void ReadInputAndCalculateDirection()
     {
+        // Handle jump input first, before early return (so jump works even without movement)
+        bool jumpPressed = jumpAction != null && jumpAction.IsPressed();
+
+        // Detect transition from not pressed to pressed
+        if (jumpPressed && !wasJumpPressedLastFrame)
+        {
+            if (IsGrounded())
+            {
+                jumpRequested = true;
+            }
+        }
+
+        wasJumpPressedLastFrame = jumpPressed;
+
         Vector2 input = moveAction.ReadValue<Vector2>();
 
         if (input == Vector2.zero)
@@ -86,20 +115,39 @@ public class MovementController : MonoBehaviour
         right.Normalize();
 
         movementDirection = (forward * input.y + right * input.x).normalized;
-
-        // Handle jump input (request it for FixedUpdate so physics is consistent)
-        if (jumpAction != null && jumpAction.triggered)
-        {
-            if (IsGrounded())
-            {
-                jumpRequested = true;
-            }
-        }
     }
 
     bool IsGrounded()
     {
-        // Cast a short ray down to detect ground. Tunable via groundCheckDistance and groundLayer.
-        return Physics.Raycast(transform.position, Vector3.down, groundCheckDistance + 0.01f, groundLayer);
+        // Use SphereCast to detect ground, accounting for player collider size
+        Vector3 spherePos = transform.position + Vector3.down * 0.5f;
+        float sphereRadius = 0.45f;
+
+        // Try with the specified groundLayer
+        bool hit = Physics.SphereCast(spherePos, sphereRadius, Vector3.down, out RaycastHit hitInfo, groundCheckDistance, groundLayer);
+
+        Debug.DrawRay(spherePos, Vector3.down * groundCheckDistance, hit ? Color.green : Color.red, 0.01f);
+        return hit;
+    }
+
+    void SetupLowFrictionColliders()
+    {
+        PhysicsMaterial lowFrictionMaterial = playerPhysicsMaterial;
+
+        if (lowFrictionMaterial == null)
+        {
+            lowFrictionMaterial = new PhysicsMaterial("PlayerLowFriction");
+            lowFrictionMaterial.dynamicFriction = 0f;
+            lowFrictionMaterial.staticFriction = 0f;
+            lowFrictionMaterial.bounciness = 0f;
+            lowFrictionMaterial.frictionCombine = PhysicsMaterialCombine.Minimum;
+            lowFrictionMaterial.bounceCombine = PhysicsMaterialCombine.Minimum;
+        }
+
+        Collider[] colliders = GetComponents<Collider>();
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            colliders[i].material = lowFrictionMaterial;
+        }
     }
 }
