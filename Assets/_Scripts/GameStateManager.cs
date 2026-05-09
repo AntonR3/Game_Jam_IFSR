@@ -1,3 +1,4 @@
+using NaughtyAttributes;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -9,13 +10,17 @@ public class GameStateManager : MonoBehaviour
     public Timer timer;
     public bool isPaused = false;
 
-    [Header("GameStats")]
-    int currentNight = 0;
-    int lastNight = 6;
+    [Header("CleaningScore")]
+    public CleaningSlider progressBar;
     public int currentTrashCount;
     public int maxTrashCount;
     public float cleaningScore = 0f;
     public float totalCleaningScore = 1f;
+    private int startingTrashCount = 0;
+
+    [Header("GameStats")]
+    int currentNight = 0;
+    int lastNight = 6;
 
     private void Awake()
     {
@@ -29,16 +34,6 @@ public class GameStateManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
-
-    public void IncreaseTrashCount(int amount)
-    {
-        currentTrashCount += amount;
-    }
-
-    public void IncreaseMaxTrashCount(int amount)
-    {
-        maxTrashCount += amount;
-    }
     public void Update()
     {
         if (isPaused)
@@ -46,6 +41,41 @@ public class GameStateManager : MonoBehaviour
 
         CheckForWin();
 
+    }
+    private void RecalculateCleaningScore()
+    {
+        if (startingTrashCount <= 0)
+        {
+            // Keine Referenzmenge -> als vollständig "sauber" behandeln
+            cleaningScore = 1f;
+        }
+        else
+        {
+            int cleaned = startingTrashCount - currentTrashCount;
+            float percent = (float)cleaned / (float)startingTrashCount;
+            cleaningScore = Mathf.Clamp01(percent);
+        }
+
+        if (progressBar != null)
+        {
+            progressBar.AnimateTo(cleaningScore);
+        }
+    }
+    public void IncreaseMaxTrashCount(int amount)
+    {
+        maxTrashCount += amount;
+    }
+    public void IncreaseTrashCount(int amount)
+    {
+        currentTrashCount += amount;
+        RecalculateCleaningScore();
+    }
+
+    public void DecreaseTrashCount(int amount)
+    {
+        currentTrashCount -= amount;
+        if (currentTrashCount < 0) currentTrashCount = 0;
+        RecalculateCleaningScore();
     }
     public void CheckForWin()
     {
@@ -62,12 +92,15 @@ public class GameStateManager : MonoBehaviour
         PauseGame();
         Debug.Log("You are a winner!");
     }
+    [Button("Start Night")]
     public void StartNight()
     {
         if(currentNight == 0)
         {
             //Spawn first night trash
-            SpawnManager.instance.SpawnTrash(90);
+            SpawnManager.instance.SpawnTrash(1);
+            startingTrashCount = currentTrashCount;
+            RecalculateCleaningScore();
         }
         if (currentNight == lastNight)
         {
@@ -86,6 +119,8 @@ public class GameStateManager : MonoBehaviour
 
         //Spawn next night trash
         SpawnManager.instance.SpawnTrash(30);
+        startingTrashCount = currentTrashCount;
+        RecalculateCleaningScore();
     }
 
     public void GameOver()

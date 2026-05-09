@@ -1,10 +1,11 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class Timer : MonoBehaviour
 {
     public float timeLeft = 300f; // 5 Minuten in Sekunden
-    public Text timerText;       // Verknüpfen Sie hier Ihr UI-Text-Element
+    public TMP_Text timerText;    // Verknüpfen Sie hier Ihr UI-Text-Element
     public bool isRunning = false;
     
     void Update()

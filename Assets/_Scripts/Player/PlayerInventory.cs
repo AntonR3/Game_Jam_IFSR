@@ -2,14 +2,15 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class PlayerCollect : MonoBehaviour
+public class PlayerInventory : MonoBehaviour
 {
     [Header("Inventory")]
+    public int coins = 0;
     public int maxPocketSize = 5;
     public int weight = 7;
     [SerializeField] float pickupRange = 2f;
     public GameObject pickupCollider;
-    List<int> inventory = new List<int>();
+    public List<int> inventory = new List<int>();
 
     private void Start()
     {
@@ -61,6 +62,9 @@ public class PlayerCollect : MonoBehaviour
         inventory.Add(trashID);
         TrashData data = TrashDataManager.instance.GetTrashByID(trashID);
         weight += data.weight;
+        coins += data.value;
+
+        GameStateManager.instance.DecreaseTrashCount(1);
 
         Debug.Log("Added: " + data._name + " to inventory! Current weight: " + weight);
         return true;
