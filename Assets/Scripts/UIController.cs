@@ -8,16 +8,18 @@ public class UIController : MonoBehaviour
     int maxWeight = 100;
     int currentWeight = 0;
     [SerializeField] Slider weightBar;
-    float weightTickTimer = 0f;
+    // float weightTickTimer = 0f;
 
     [SerializeField] bool startWithMenuOpen = false;
     [SerializeField] GameObject pauseMenuCanvas;
+    [SerializeField] GameObject startScreenCanvas;
     [SerializeField] CinemachineInputAxisController cinemachineFreeLook;
     [SerializeField] MovementController movementController;
     PlayerInput playerInput;
     InputAction escapeAction;
     Keyboard keyboard;
     bool menuOpen;
+    bool showingStartScreen = true;
 
     void Awake()
     {
@@ -41,17 +43,23 @@ public class UIController : MonoBehaviour
     void Start()
     {
         Debug.Log($"UIController Start: Canvas assigned: {(pauseMenuCanvas != null ? "YES" : "NO")}");
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     void Update()
     {
-        weightTickTimer += Time.deltaTime;
-        if (weightTickTimer >= 1f)
-        {
-            weightTickTimer -= 1f;
-            UpdateWeight(5);
-        }
+        // weightTickTimer += Time.deltaTime;
+        // if (weightTickTimer >= 1f)
+        // {
+        //     weightTickTimer -= 1f;
+        //     UpdateWeight(5);
+        // }
 
+        if (showingStartScreen)
+        {
+            return; // Don't process input if we're still on the start screen
+        }
         bool escapePressed = false;
 
         // Try PlayerInput first
@@ -173,4 +181,30 @@ public class UIController : MonoBehaviour
             movementController.IncreaseStaminaRegen(change);
         }
     }
+
+    public void ShowStartScreen()
+    {
+        Debug.Log("Showing start screen");
+        showingStartScreen = true;
+        menuOpen = false;
+        pauseMenuCanvas.SetActive(menuOpen);
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        if (cinemachineFreeLook != null)
+        {
+            cinemachineFreeLook.GetComponent<CinemachineInputAxisController>().enabled = false;
+        }
+        movementController.SetFreezeMovement(true);
+        startScreenCanvas.SetActive(true);
+    }
+
+    public void hideStartScreen()
+    {
+        Debug.Log("Hiding start screen");
+        showingStartScreen = false;
+        menuOpen = false;
+        ApplyCursorState();
+        movementController.SetFreezeMovement(false);
+        startScreenCanvas.SetActive(false);
+    }   
 }

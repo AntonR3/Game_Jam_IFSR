@@ -18,10 +18,6 @@ public class GameStateManager : MonoBehaviour
     public float totalCleaningScore = 1f;
     private int startingTrashCount = 0;
 
-    [Header("GameStats")]
-    int currentNight = 0;
-    int lastNight = 6;
-
     private void Awake()
     {
         if(instance == null)
@@ -46,7 +42,7 @@ public class GameStateManager : MonoBehaviour
     {
         if (startingTrashCount <= 0)
         {
-            // Keine Referenzmenge -> als vollständig "sauber" behandeln
+            // Keine Referenzmenge -> als vollstï¿½ndig "sauber" behandeln
             cleaningScore = 1f;
         }
         else
@@ -93,21 +89,14 @@ public class GameStateManager : MonoBehaviour
         Debug.Log("You are a winner!");
     }
     [Button("Start Night")]
-    public void StartNight()
+    public void StartNight(int nightNumber, int trashAmount)
     {
-        if(currentNight == 0)
-        {
-            //Spawn first night trash
-            SpawnManager.instance.SpawnTrash(1);
-            startingTrashCount = currentTrashCount;
-            RecalculateCleaningScore();
-        }
-        if (currentNight == lastNight)
-        {
-            GameOver();
-            return;
-        }
-        currentNight++;
+        timer.gameObject.SetActive(true);
+        progressBar.gameObject.SetActive(true);
+        SpawnManager.instance.SpawnTrash(trashAmount);
+        startingTrashCount = currentTrashCount;
+        RecalculateCleaningScore();
+
         timer.timeLeft = 300f; // Reset timer for the new night
         timer.isRunning = true;
     }
@@ -140,5 +129,17 @@ public class GameStateManager : MonoBehaviour
     {
         // DEACTIVATE PAUSE UI
         isPaused = false;
+    }
+
+    public void HideTimerAndProgressBar()
+    {
+        if (timer != null)
+        {
+            timer.gameObject.SetActive(false);
+        }
+        if (progressBar != null)
+        {
+            progressBar.gameObject.SetActive(false);
+        }
     }
 }
