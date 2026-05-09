@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using NUnit.Framework;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using UnityEditor;
@@ -9,7 +10,8 @@ using NaughtyAttributes;
 public class SpawnManager : MonoBehaviour
 {
     public static SpawnManager instance;
-
+    [Header("Debug")]
+    public int trashcountDebug;
     [Header("Nodes")]
     public List<SpawnNode> allNodes = new List<SpawnNode>();
     public List<SpawnNode> floorNodes = new List<SpawnNode>();
@@ -38,9 +40,15 @@ public class SpawnManager : MonoBehaviour
 
     private void InitNodeLists()
     {
-        //TOD:
         //LOOP OVER ALL CHILDREN AND ADD THEM TO allNodes
-        
+        foreach (Transform child in transform)
+        {
+            SpawnNode node = child.GetComponent<SpawnNode>();
+            if (node != null)
+            {
+                allNodes.Add(node);
+            }
+        }
         // GROUP THE NODES BY REGION
         foreach (SpawnNode node in allNodes)
         {
@@ -66,13 +74,13 @@ public class SpawnManager : MonoBehaviour
         switch (region)
         {
             case Region.Floor:
-                int i = Random.Range(0, floorWeights.Length);
+                int i = UnityEngine.Random.Range(0, floorWeights.Length);
                 return floorWeights[i];
             case Region.KitchenCounter:
-                int j = Random.Range(0, kitchenWeights.Length);
+                int j = UnityEngine.Random.Range(0, kitchenWeights.Length);
                 return kitchenWeights[j];
             case Region.Table:
-                int k = Random.Range(0, tableWeights.Length);
+                int k = UnityEngine.Random.Range(0, tableWeights.Length);
                 return tableWeights[k];
             default:
                 return 0;
@@ -115,10 +123,22 @@ public class SpawnManager : MonoBehaviour
                 return null;
         }
     }
+    //HELPER
+    // Fisher-Yates shuffle using Unity's Random
+    private void Shuffle<T>(List<T> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+            T tmp = list[i];
+            list[i] = list[j];
+            list[j] = tmp;
+        }
+    }
     [Button("Spawn Trash")]
     public void DebugTrash()
     {
-        SpawnTrash(9);
+        SpawnTrash(trashcountDebug);
     }
     public void SpawnTrash(int amount)
     {
@@ -137,28 +157,72 @@ public class SpawnManager : MonoBehaviour
             return;
         }
 
-        if (validFloorNodes.Count > 0)
-        { 
-            //TODO:
-            // SHUFFLE THE SPAWNPOINTS
-            for (int i = 0; i < trashAmountToSpawn / 3; i++)
-            {
-                validFloorNodes[i].SpawnTrash(CalculateItemIDByRegionRarity(Region.Floor));
-                spawnedTrashCount++;
-            }
+        // Distribute 'amount' roughly equally across regions but respect available nodes per region
+        var regionLists = new List<(Region region, List<SpawnNode> nodes)>
+        {
+            (Region.Floor, validFloorNodes),
+            (Region.Table, validTableNodes),
+            (Region.KitchenCounter, validKitchenNodes)
+        };
 
-            for (int i = 0; i < trashAmountToSpawn / 3; i++)
-            {
-                validTableNodes[i].SpawnTrash(CalculateItemIDByRegionRarity(Region.Table));
-                spawnedTrashCount++;
-            }
+        int[] available = regionLists.Select(r => r.nodes.Count).ToArray();
+        int[] desired = new int[3];
 
-            for (int i = 0; i < trashAmountToSpawn / 3; i++)
+        int baseShare = trashAmountToSpawn / 3;
+        int remainder = trashAmountToSpawn % 3;
+
+        // Give each region the base share, capped by availability
+        for (int idx = 0; idx < 3; idx++)
+        {
+            desired[idx] = Math.Min(available[idx], baseShare);
+        }
+
+        // Calculate leftover to distribute
+        int allocated = desired.Sum();
+        int leftover = trashAmountToSpawn - allocated;
+
+        // Distribute leftover to regions with remaining capacity (prefer those with larger spare capacity)
+        while (leftover > 0)
+        {
+            int bestIdx = -1;
+            int bestCap = 0;
+            for (int idx = 0; idx < 3; idx++)
             {
-                validKitchenNodes[i].SpawnTrash(CalculateItemIDByRegionRarity(Region.KitchenCounter));
-                spawnedTrashCount++;
+                int cap = available[idx] - desired[idx];
+                if (cap > bestCap)
+                {
+                    bestCap = cap;
+                    bestIdx = idx;
+                }
+            }
+            if (bestIdx == -1) break; // no capacity left anywhere
+            desired[bestIdx]++;
+            leftover--;
+        }
+
+        // For each region: shuffle valid nodes, take desired count and add to global spawnPoints
+        for (int idx = 0; idx < 3; idx++)
+        {
+            var nodes = regionLists[idx].nodes;
+            if (nodes.Count == 0 || desired[idx] == 0) continue;
+            Shuffle(nodes);
+            int takeCount = Math.Min(desired[idx], nodes.Count);
+            for (int t = 0; t < takeCount; t++)
+            {
+                spawnPoints.Add(nodes[t]);
             }
         }
+
+        // Shuffle all chosen spawn points so actual spawn order is random across regions
+        Shuffle(spawnPoints);
+
+        // Spawn at chosen points using their region rarity
+        foreach (var node in spawnPoints)
+        {
+            node.SpawnTrash(CalculateItemIDByRegionRarity(node.region));
+            spawnedTrashCount++;
+        }
+
         Debug.Log("Spawned: " + spawnedTrashCount + " Trash Items");
         GameStateManager.instance.IncreaseTrashCount(spawnedTrashCount);
     }

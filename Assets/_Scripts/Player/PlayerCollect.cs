@@ -7,22 +7,13 @@ public class PlayerCollect : MonoBehaviour
     [Header("Inventory")]
     public int maxPocketSize = 5;
     public int weight = 7;
-    float pickupRange = 2f;
-    SphereCollider pickupCollider;
+    [SerializeField] float pickupRange = 2f;
+    public GameObject pickupCollider;
     List<int> inventory = new List<int>();
 
     private void Start()
     {
-        pickupCollider = GetComponent<SphereCollider>();
-        if(pickupCollider == null)
-        {
-            Debug.LogError("No SphereCollider found on Player! Please add a Collider component.");
-        }
-        else
-        {
-            pickupCollider.radius = pickupRange;
-            pickupCollider.isTrigger = true;
-        }
+        pickupCollider.transform.localScale = new Vector3(pickupRange, pickupRange/2, pickupRange);
     }
 
     public void AddPickUpRange(float x)
@@ -38,7 +29,7 @@ public class PlayerCollect : MonoBehaviour
         pickupRange = range;
         if(pickupCollider != null)
         {
-            pickupCollider.radius = pickupRange;
+            pickupCollider.transform.localScale = new Vector3(pickupRange, pickupRange / 2, pickupRange);
         }
     }
     public void OnTriggerEnter(Collider other)
@@ -48,8 +39,8 @@ public class PlayerCollect : MonoBehaviour
             SpawnNode node = other.GetComponentInParent<SpawnNode>();
             if(node != null)
             {
-                AddToInventory(node.trashObjectID);
-                node.RemoveTrash();
+                if(AddToInventory(node.trashObjectID))
+                    node.RemoveTrash();
             }
         }
 
@@ -59,18 +50,20 @@ public class PlayerCollect : MonoBehaviour
         }
     }
 
-    public void AddToInventory(int trashID)
+    public bool AddToInventory(int trashID)
     {
         if(inventory.Count >= maxPocketSize)
         {
             Debug.Log("Inventory is full! Cannot add more trash.");
-            return;
+            return false;
         }
 
         inventory.Add(trashID);
         TrashData data = TrashDataManager.instance.GetTrashByID(trashID);
         weight += data.weight;
+
         Debug.Log("Added: " + data._name + " to inventory! Current weight: " + weight);
+        return true;
     }
 
     public void SellInventory()
