@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using Unity.Cinemachine;
 using UnityEngine.UI;
 using NUnit.Framework;
+using TMPro;
 
 public class UIController : MonoBehaviour
 {
@@ -18,18 +19,23 @@ public class UIController : MonoBehaviour
     [SerializeField] Camera merchantCamera;
     [SerializeField] CinemachineInputAxisController cinemachineFreeLook;
     [SerializeField] MovementController movementController;
+    [SerializeField] TextMeshProUGUI cashText;
+
+    public bool interactionEnabled = false;
     PlayerInput playerInput;
     InputAction escapeAction;
+    InputAction interactAction;
     Keyboard keyboard;
     bool ingame = false;
 
-    void Awake()
+    void Start()
     {
         playerInput = GetComponent<PlayerInput>();
         if (playerInput != null)
         {
             escapeAction = playerInput.actions["Escape"];
-            Debug.Log($"UIController: PlayerInput found, Escape action: {(escapeAction != null ? "FOUND" : "NOT FOUND")}");
+            interactAction = playerInput.actions["Interact"];
+            Debug.Log($"UIController: PlayerInput found, Escape action: {(escapeAction != null ? "FOUND" : "NOT FOUND")}, Interact action: {(interactAction != null ? "FOUND" : "NOT FOUND")}");
         }
         else
         {
@@ -69,6 +75,13 @@ public class UIController : MonoBehaviour
         {
             Debug.Log($"ESC pressed!");
             ShowPauseScreen();
+        }
+
+        if (interactionEnabled && interactAction != null && interactAction.WasPressedThisFrame())
+        {
+            Debug.Log("Interact pressed while interaction enabled! Showing merchant screen.");
+            HideIngameUI();
+            ShowMerchantScreen();
         }
 
         // Unity Editor and focus changes can reset cursor lock state.
@@ -115,18 +128,18 @@ public class UIController : MonoBehaviour
         }
     }
 
-    public void UpdateWeight(int weightChange)
+    public void UpdateWeight(int newWeight)
     {
-        weightBar.value += weightChange;
+        weightBar.value = newWeight;
     }
     public void ResetWeight()
     {
         weightBar.value = 0;
     }
 
-    public void UpdateMaxWeight(int change)
+    public void UpdateMaxWeight(int newMaxWeight)
     {
-        weightBar.maxValue += change;
+        weightBar.maxValue = newMaxWeight;
     }
 
     public void ShowStartScreen()
@@ -196,5 +209,30 @@ public class UIController : MonoBehaviour
     public void HideIngameUI()
     {
         ingameUICanvas.SetActive(false);
+    }
+
+    public void EnableInteraction()
+    {
+        // Enable interaction UI elements, e.g. show "Press E to interact" text
+        Debug.Log("Enabling interaction UI");
+        interactionEnabled = true;
+    }
+
+    public void DisableInteraction()
+    {
+        // Disable interaction UI elements
+        Debug.Log("Disabling interaction UI");
+        interactionEnabled = false;
+    }
+
+    public void ExitMerchantScreen()
+    {
+        HideMerchantScreen();
+        ShowIngameUI();
+    }
+
+    public void UpdateCash(int newCashAmount)
+    {
+        cashText.text = $"Cash: {newCashAmount}";
     }
 }

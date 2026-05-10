@@ -16,11 +16,13 @@ public class PlayerInventory : MonoBehaviour
     public List<int> inventory = new List<int>();
 
     [SerializeField] UIController uiController;
+    [SerializeField] Merchant merchant;
 
     private void Start()
     {
         pickupCollider.transform.localScale = new Vector3(pickupRange, pickupRange/2, pickupRange);
         uiController.SetMaxWeight(maxPocketSize);
+        uiController.UpdateCash(coins);
     }
 
     public void AddPickUpRange(float x)
@@ -53,7 +55,17 @@ public class PlayerInventory : MonoBehaviour
 
         if(other.tag == "Merchant")
         {
-            SellInventory();
+            merchant.ChangeMerchantText("PRESS E TO INTERACT!!");
+            uiController.EnableInteraction();
+        }
+    }
+
+    public void OnTriggerExit(Collider other)
+    {
+        if(other.tag == "Merchant")
+        {
+            merchant.ChangeMerchantText("I WANT YOUR TRASH!!!");
+            uiController.DisableInteraction();
         }
     }
 
@@ -73,7 +85,7 @@ public class PlayerInventory : MonoBehaviour
         }
         inventory.Add(trashID);
         weight += data.weight;
-        uiController.UpdateWeight(data.weight);
+        uiController.UpdateWeight(weight);
         coins += data.value;
 
         GameStateManager.instance.DecreaseTrashCount(1);
@@ -92,6 +104,8 @@ public class PlayerInventory : MonoBehaviour
 
             //Display what item was and how much it was worth
             Debug.Log("Sold: " + data._name + " for " + data.value + " coins!" );
+            coins += data.value;
+            uiController.UpdateCash(coins);
         }
 
         inventory.Clear();

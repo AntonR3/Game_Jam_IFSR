@@ -46,6 +46,10 @@ public class MovementController : MonoBehaviour
             staminaSlider.fillRect.GetComponent<Image>().color = staminaSliderColor;
         }
         playerInput = GetComponent<PlayerInput>();
+        if (playerInput == null)
+        {
+            Debug.LogWarning("MovementController: No PlayerInput component found on this GameObject. Please add one.");
+        }
         moveAction = playerInput.actions["Move"];
         sprintAction = playerInput.actions["Sprint"];
         jumpAction = playerInput.actions["Jump"];
