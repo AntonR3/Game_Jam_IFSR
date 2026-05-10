@@ -4,6 +4,7 @@ using Unity.Cinemachine;
 using UnityEngine.UI;
 using NUnit.Framework;
 using TMPro;
+using System.Collections;
 
 public class UIController : MonoBehaviour
 {
@@ -20,6 +21,14 @@ public class UIController : MonoBehaviour
     [SerializeField] CinemachineInputAxisController cinemachineFreeLook;
     [SerializeField] MovementController movementController;
     [SerializeField] TextMeshProUGUI cashText;
+    [SerializeField] TextMeshProUGUI cashTextInMerchant;
+
+    [SerializeField] TextMeshProUGUI speedText;
+    [SerializeField] TextMeshProUGUI staminaText;
+    [SerializeField] TextMeshProUGUI staminaRegenText;
+    [SerializeField] TextMeshProUGUI rangeText;
+    [SerializeField] TextMeshProUGUI spaceText;
+
 
     public bool interactionEnabled = false;
     PlayerInput playerInput;
@@ -27,6 +36,16 @@ public class UIController : MonoBehaviour
     InputAction interactAction;
     Keyboard keyboard;
     bool ingame = false;
+    int[] pricelist = {5, 10, 25, 45, 70, 100, 135, 175, 220, 270};
+    Coroutine failedUpgradeResetCoroutine;
+    const float failedUpgradeMessageDuration = 2f;
+
+    int currentSpeedLevel;
+    int currentStaminaLevel;
+    int currentStaminaRegenLevel;
+    int currentRangeLevel;
+    int currentSpaceLevel;
+
 
     void Start()
     {
@@ -234,5 +253,109 @@ public class UIController : MonoBehaviour
     public void UpdateCash(int newCashAmount)
     {
         cashText.text = $"Cash: {newCashAmount}";
+        cashTextInMerchant.text = $"Cash: {newCashAmount}";
+    }
+
+    public void UpdateUpgradeTexts(int speedLevel, int staminaLevel, int staminaRegenLevel, int rangeLevel, int spaceLevel)
+    {
+        currentSpeedLevel = speedLevel;
+        currentStaminaLevel = staminaLevel;
+        currentStaminaRegenLevel = staminaRegenLevel;
+        currentRangeLevel = rangeLevel;
+        currentSpaceLevel = spaceLevel;
+
+        if (speedLevel < pricelist.Length)
+            speedText.text = $"Speed Lv: {speedLevel} ({pricelist[speedLevel]}$)";
+        else
+            speedText.text = $"Speed Lv: {speedLevel} (MAX)";
+
+        if (staminaLevel < pricelist.Length)
+            staminaText.text = $"Stamina Lv: {staminaLevel} ({pricelist[staminaLevel]}$)";
+        else
+            staminaText.text = $"Stamina Lv: {staminaLevel} (MAX)";
+
+        if (staminaRegenLevel < pricelist.Length)
+            staminaRegenText.text = $"Stamina Regen Lv: {staminaRegenLevel} ({pricelist[staminaRegenLevel]}$)";
+        else
+            staminaRegenText.text = $"Stamina Regen Lv: {staminaRegenLevel} (MAX)";
+
+        if (rangeLevel < pricelist.Length)
+            rangeText.text = $"Range Lv: {rangeLevel} ({pricelist[rangeLevel]}$)";
+        else
+            rangeText.text = $"Range Lv: {rangeLevel} (MAX)";
+
+        if (spaceLevel < pricelist.Length)
+            spaceText.text = $"Space Lv: {spaceLevel} ({pricelist[spaceLevel]}$)";
+        else
+            spaceText.text = $"Space Lv: {spaceLevel} (MAX)";
+    }
+
+    public void FailedUpgrade(int reason)
+    {
+        switch (reason)
+        {
+            case 0:
+            {
+                string price = currentSpeedLevel < pricelist.Length ? $"{pricelist[currentSpeedLevel]}$" : "MAX";
+                speedText.text = $"Not enough cash! Upgrade costs {price}";
+            }
+                break;
+            case 1:
+            {
+                string price = currentStaminaLevel < pricelist.Length ? $"{pricelist[currentStaminaLevel]}$" : "MAX";
+                staminaText.text = $"Not enough cash! Upgrade costs {price}";
+            }
+                break;
+            case 2:
+            {
+                string price = currentStaminaRegenLevel < pricelist.Length ? $"{pricelist[currentStaminaRegenLevel]}$" : "MAX";
+                staminaRegenText.text = $"Not enough cash! Upgrade costs {price}";
+            }
+                break;
+            case 3:
+            {
+                string price = currentRangeLevel < pricelist.Length ? $"{pricelist[currentRangeLevel]}$" : "MAX";
+                rangeText.text = $"Not enough cash! Upgrade costs {price}";
+            }
+                break;
+            case 4:
+            {
+                string price = currentSpaceLevel < pricelist.Length ? $"{pricelist[currentSpaceLevel]}$" : "MAX";
+                spaceText.text = $"Not enough cash! Upgrade costs {price}";
+            }
+                break;
+            case 5:
+                speedText.text = $"Speed is already at max level!";
+                break;
+            case 6:
+                staminaText.text = $"Stamina is already at max level!";
+                break;
+            case 7:
+                staminaRegenText.text = $"Stamina Regen is already at max level!";
+                break;
+            case 8:
+                rangeText.text = $"Range is already at max level!";
+                break;
+            case 9:
+                spaceText.text = $"Space is already at max level!";
+                break;
+            default:
+                Debug.Log("Unknown upgrade failure reason!");
+                break;
+        }
+
+        if (failedUpgradeResetCoroutine != null)
+        {
+            StopCoroutine(failedUpgradeResetCoroutine);
+        }
+
+        failedUpgradeResetCoroutine = StartCoroutine(ResetFailedUpgradeTextAfterDelay());
+    }
+
+    IEnumerator ResetFailedUpgradeTextAfterDelay()
+    {
+        yield return new WaitForSeconds(failedUpgradeMessageDuration);
+        UpdateUpgradeTexts(currentSpeedLevel, currentStaminaLevel, currentStaminaRegenLevel, currentRangeLevel, currentSpaceLevel);
+        failedUpgradeResetCoroutine = null;
     }
 }
