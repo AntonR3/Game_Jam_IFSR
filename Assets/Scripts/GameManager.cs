@@ -6,7 +6,6 @@ public class GameManager : MonoBehaviour
 {
     [SerializeField] UIController uiController;
     [SerializeField] GameStateManager gameStateManager;
-    [SerializeField] Camera startScreenCamera;
     [Header("GameStats")]
     int lastNight = 6;
 
@@ -18,17 +17,16 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         //show startscreen
-        uiController.ShowStartScreen();
         uiController.HidePauseScreen();
         uiController.HideMerchantScreen();
-        startScreenCamera.gameObject.SetActive(true);
+        uiController.HideIngameUI();
         gameStateManager.HideTimerAndProgressBar();
+        uiController.ShowStartScreen();
 
     }
     public void StartGame()
     {
         uiController.HideStartScreen();
-        startScreenCamera.gameObject.SetActive(false);
         StartGameLoop();
     }
 

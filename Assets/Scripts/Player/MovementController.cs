@@ -17,6 +17,12 @@ public class MovementController : MonoBehaviour
     [SerializeField] float maxStamina = 40f;
     [SerializeField] float staminaCostPerSecond = 30f;
     [SerializeField] float staminaRegenPerSecond = 5f;
+
+    [SerializeField] float speedUpgradeAmount = 0.5f;
+    [SerializeField] int staminaUpgradeAmount = 10;
+    [SerializeField] float staminaRegenUpgradeAmount = 2f;
+
+
     [SerializeField] Slider staminaSlider;
     [SerializeField] Color staminaSliderColor = Color.gray;
     [SerializeField] PhysicsMaterial playerPhysicsMaterial;
@@ -199,5 +205,25 @@ public class MovementController : MonoBehaviour
     public void IncreaseStaminaRegen(float amount)
     {
         staminaRegenPerSecond += amount;
+    }
+
+    public void IncreaseMoveSpeed(float amount)
+    {
+        moveSpeed += amount;
+    }
+
+    public void UpgradeSpeed()
+    {
+        IncreaseMoveSpeed(speedUpgradeAmount);
+    }
+
+    public void UpgradeStamina()
+    {
+        IncreaseMaxStamina(staminaUpgradeAmount);
+    }
+
+    public void UpgradeStaminaRegen()
+    {
+        IncreaseStaminaRegen(staminaRegenUpgradeAmount);
     }
 }

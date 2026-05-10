@@ -6,14 +6,16 @@ using NUnit.Framework;
 
 public class UIController : MonoBehaviour
 {
-    int maxWeight = 100;
-    int currentWeight = 0;
     [SerializeField] Slider weightBar;
     // float weightTickTimer = 0f;
 
+    [SerializeField] GameObject ingameUICanvas;
     [SerializeField] GameObject pauseMenuCanvas;
     [SerializeField] GameObject startScreenCanvas;
-    [SerializeField] GameObject merchantCanvas; 
+    [SerializeField] Camera startScreenCamera;
+
+    [SerializeField] GameObject merchantCanvas;
+    [SerializeField] Camera merchantCamera;
     [SerializeField] CinemachineInputAxisController cinemachineFreeLook;
     [SerializeField] MovementController movementController;
     PlayerInput playerInput;
@@ -23,7 +25,6 @@ public class UIController : MonoBehaviour
 
     void Awake()
     {
-        SetupWeightSlider();
         playerInput = GetComponent<PlayerInput>();
         if (playerInput != null)
         {
@@ -103,69 +104,49 @@ public class UIController : MonoBehaviour
         HidePauseScreen();
     }
 
-    void SetupWeightSlider()
+    public void SetMaxWeight(int maxWeight)
     {
         if (weightBar != null)
         {
             weightBar.minValue = 0;
             weightBar.maxValue = maxWeight;
-            weightBar.value = currentWeight;
+            weightBar.value = 0;
             
         }
     }
 
-    public bool UpdateWeight(int weightChange)
+    public void UpdateWeight(int weightChange)
     {
-        if (currentWeight + weightChange > maxWeight)
-        {
-            return false; // Can't pick up item, would exceed max weight
-        }
-        currentWeight = Mathf.Clamp(currentWeight + weightChange, 0, maxWeight);
-        if (weightBar != null)
-        {
-            weightBar.value = currentWeight;
-        }
-        return true;
+        weightBar.value += weightChange;
+    }
+    public void ResetWeight()
+    {
+        weightBar.value = 0;
     }
 
     public void UpdateMaxWeight(int change)
     {
-        maxWeight += change;
-        if (weightBar != null)
-        {
-            weightBar.maxValue = maxWeight;
-            weightBar.value = currentWeight;
-        }
-    }
-
-    public void UpdateMaxStamina(int change) {
-        if (movementController != null)
-        {
-            movementController.IncreaseMaxStamina(change);
-        }
-    }
-
-    public void UpdateStaminaRegen(int change) {
-        if (movementController != null)
-        {
-            movementController.IncreaseStaminaRegen(change);
-        }
+        weightBar.maxValue += change;
     }
 
     public void ShowStartScreen()
     {
         Debug.Log("Showing start screen");
         startScreenCanvas.SetActive(true);
+        startScreenCamera.gameObject.SetActive(true);
         ApplyCursorState(true);
         ingame = false;
+        HideIngameUI();
     }
 
     public void HideStartScreen()
     {
         Debug.Log("Hiding start screen");
         startScreenCanvas.SetActive(false);
+        startScreenCamera.gameObject.SetActive(false);
         ApplyCursorState(false);
         ingame = true;
+        ShowIngameUI();
     }
 
     public void ShowPauseScreen()
@@ -174,6 +155,7 @@ public class UIController : MonoBehaviour
         pauseMenuCanvas.SetActive(true);
         ApplyCursorState(true);
         ingame = false;
+        HideIngameUI();
         
     }
 
@@ -183,21 +165,36 @@ public class UIController : MonoBehaviour
         pauseMenuCanvas.SetActive(false);
         ApplyCursorState(false);
         ingame = true;
+        ShowIngameUI();
     }
 
     public void ShowMerchantScreen()
     {
         Debug.Log("Showing merchant screen");
         merchantCanvas.SetActive(true);
+        merchantCamera.gameObject.SetActive(true);
         ApplyCursorState(true);
         ingame = false;
+        HideIngameUI();
     }
 
     public void HideMerchantScreen()
     {
         Debug.Log("Hiding merchant screen");
         merchantCanvas.SetActive(false);
+        merchantCamera.gameObject.SetActive(false);
         ApplyCursorState(false);
         ingame = true;
+        ShowIngameUI();
+    }
+
+    public void ShowIngameUI()
+    {
+        ingameUICanvas.SetActive(true);
+    }
+
+    public void HideIngameUI()
+    {
+        ingameUICanvas.SetActive(false);
     }
 }

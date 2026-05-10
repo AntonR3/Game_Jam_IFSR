@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Android.Gradle.Manifest;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -8,13 +9,18 @@ public class PlayerInventory : MonoBehaviour
     public int coins = 0;
     public int maxPocketSize = 5;
     public int weight = 7;
+    public int pocketSizeUpgradeAmount = 1;
+    public float rangeUpgradeAmount = 1f;
     [SerializeField] float pickupRange = 2f;
     public GameObject pickupCollider;
     public List<int> inventory = new List<int>();
 
+    [SerializeField] UIController uiController;
+
     private void Start()
     {
         pickupCollider.transform.localScale = new Vector3(pickupRange, pickupRange/2, pickupRange);
+        uiController.SetMaxWeight(maxPocketSize);
     }
 
     public void AddPickUpRange(float x)
@@ -53,15 +59,21 @@ public class PlayerInventory : MonoBehaviour
 
     public bool AddToInventory(int trashID)
     {
-        if(inventory.Count >= maxPocketSize)
+        // if(inventory.Count >= maxPocketSize)
+        // {
+        //     Debug.Log("Inventory is full! Cannot add more trash.");
+        //     return false;
+        // }
+
+        TrashData data = TrashDataManager.instance.GetTrashByID(trashID);
+        if (data.weight + weight > maxPocketSize)
         {
-            Debug.Log("Inventory is full! Cannot add more trash.");
+            Debug.Log("Cannot add " + data._name + " to inventory! Not enough space. Current weight: " + weight);
             return false;
         }
-
         inventory.Add(trashID);
-        TrashData data = TrashDataManager.instance.GetTrashByID(trashID);
         weight += data.weight;
+        uiController.UpdateWeight(data.weight);
         coins += data.value;
 
         GameStateManager.instance.DecreaseTrashCount(1);
@@ -84,7 +96,23 @@ public class PlayerInventory : MonoBehaviour
 
         inventory.Clear();
         weight = 0;
+        uiController.ResetWeight();
     }
 
+    public void IncreaseMaxPocketSize(int amount)
+    {
+        maxPocketSize += amount;
+    }
+
+    public void UpgradeRange()
+    {
+        AddPickUpRange(rangeUpgradeAmount);
+    }
+
+    public void UpgradeSpace()
+    {
+        IncreaseMaxPocketSize(pocketSizeUpgradeAmount);
+        uiController.UpdateMaxWeight(maxPocketSize);
+    }
 
 }
