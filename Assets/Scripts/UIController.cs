@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Cinemachine;
 using UnityEngine.UI;
+using NUnit.Framework;
 
 public class UIController : MonoBehaviour
 {
@@ -10,16 +11,15 @@ public class UIController : MonoBehaviour
     [SerializeField] Slider weightBar;
     // float weightTickTimer = 0f;
 
-    [SerializeField] bool startWithMenuOpen = false;
     [SerializeField] GameObject pauseMenuCanvas;
     [SerializeField] GameObject startScreenCanvas;
+    [SerializeField] GameObject merchantCanvas; 
     [SerializeField] CinemachineInputAxisController cinemachineFreeLook;
     [SerializeField] MovementController movementController;
     PlayerInput playerInput;
     InputAction escapeAction;
     Keyboard keyboard;
-    bool menuOpen;
-    bool showingStartScreen = true;
+    bool ingame = false;
 
     void Awake()
     {
@@ -35,16 +35,7 @@ public class UIController : MonoBehaviour
             Debug.LogWarning("UIController: PlayerInput NOT found on this GameObject. Using Input System directly.");
             keyboard = Keyboard.current;
         }
-
-        menuOpen = startWithMenuOpen;
-        ApplyCursorState();
-    }
-
-    void Start()
-    {
-        Debug.Log($"UIController Start: Canvas assigned: {(pauseMenuCanvas != null ? "YES" : "NO")}");
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        ApplyCursorState(true);
     }
 
     void Update()
@@ -56,9 +47,9 @@ public class UIController : MonoBehaviour
         //     UpdateWeight(5);
         // }
 
-        if (showingStartScreen)
+        if (!ingame)
         {
-            return; // Don't process input if we're still on the start screen
+            return; // Don't check for pause input if not in game
         }
         bool escapePressed = false;
 
@@ -75,62 +66,41 @@ public class UIController : MonoBehaviour
 
         if (escapePressed)
         {
-            menuOpen = !menuOpen;
-            Debug.Log($"ESC pressed! Menu now: {menuOpen}, Canvas: {(pauseMenuCanvas != null ? "SET" : "NULL")}");
-            ApplyCursorState();
-            if (movementController != null)
-            {
-                movementController.SetFreezeMovement(menuOpen);
-            }
+            Debug.Log($"ESC pressed!");
+            ShowPauseScreen();
         }
 
         // Unity Editor and focus changes can reset cursor lock state.
         // Re-apply when the current state differs from what gameplay/UI expects.
-        if (Cursor.lockState != DesiredLockState() || Cursor.visible != menuOpen)
-            ApplyCursorState();
+        if (Cursor.lockState != (ingame ? CursorLockMode.Locked: CursorLockMode.None) || Cursor.visible == ingame)
+        {
+            ApplyCursorState(!ingame);
+        }
     }
 
     void OnApplicationFocus(bool hasFocus)
     {
         if (hasFocus)
-            ApplyCursorState();
+            ApplyCursorState(true);
     }
 
     void OnApplicationPause(bool pauseStatus)
     {
         if (!pauseStatus)
-            ApplyCursorState();
+            ApplyCursorState(false);
     }
 
-    CursorLockMode DesiredLockState()
+    void ApplyCursorState(bool menuOpen)
     {
-        return menuOpen ? CursorLockMode.None : CursorLockMode.Locked;
-    }
-
-    void ApplyCursorState()
-    {
-        pauseMenuCanvas.SetActive(menuOpen);
-        Cursor.lockState = DesiredLockState();
+        Cursor.lockState = menuOpen ? CursorLockMode.None : CursorLockMode.Locked;;
         Cursor.visible = menuOpen;
-        if (cinemachineFreeLook != null)
-        {
-            cinemachineFreeLook.GetComponent<CinemachineInputAxisController>().enabled = !menuOpen;
-        }
+        cinemachineFreeLook.GetComponent<CinemachineInputAxisController>().enabled = !menuOpen;
+        movementController.SetFreezeMovement(menuOpen);
     }
 
     public void OnContinuePressed()
     {
-        menuOpen = false;
-        ApplyCursorState();
-        if (movementController != null)
-        {
-            movementController.SetFreezeMovement(false);
-        }
-    }
-
-    public bool getMenuState()
-    {
-        return menuOpen;
+        HidePauseScreen();
     }
 
     void SetupWeightSlider()
@@ -158,7 +128,7 @@ public class UIController : MonoBehaviour
         return true;
     }
 
-    public void updateMaxWeight(int change)
+    public void UpdateMaxWeight(int change)
     {
         maxWeight += change;
         if (weightBar != null)
@@ -168,14 +138,14 @@ public class UIController : MonoBehaviour
         }
     }
 
-    public void updateMaxStamina(int change) {
+    public void UpdateMaxStamina(int change) {
         if (movementController != null)
         {
             movementController.IncreaseMaxStamina(change);
         }
     }
 
-    public void updateStaminaRegen(int change) {
+    public void UpdateStaminaRegen(int change) {
         if (movementController != null)
         {
             movementController.IncreaseStaminaRegen(change);
@@ -185,26 +155,49 @@ public class UIController : MonoBehaviour
     public void ShowStartScreen()
     {
         Debug.Log("Showing start screen");
-        showingStartScreen = true;
-        menuOpen = false;
-        pauseMenuCanvas.SetActive(menuOpen);
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-        if (cinemachineFreeLook != null)
-        {
-            cinemachineFreeLook.GetComponent<CinemachineInputAxisController>().enabled = false;
-        }
-        movementController.SetFreezeMovement(true);
         startScreenCanvas.SetActive(true);
+        ApplyCursorState(true);
+        ingame = false;
     }
 
-    public void hideStartScreen()
+    public void HideStartScreen()
     {
         Debug.Log("Hiding start screen");
-        showingStartScreen = false;
-        menuOpen = false;
-        ApplyCursorState();
-        movementController.SetFreezeMovement(false);
         startScreenCanvas.SetActive(false);
-    }   
+        ApplyCursorState(false);
+        ingame = true;
+    }
+
+    public void ShowPauseScreen()
+    {
+        Debug.Log("Showing pause screen");
+        pauseMenuCanvas.SetActive(true);
+        ApplyCursorState(true);
+        ingame = false;
+        
+    }
+
+    public void HidePauseScreen()
+    {
+        Debug.Log("Hiding pause screen");
+        pauseMenuCanvas.SetActive(false);
+        ApplyCursorState(false);
+        ingame = true;
+    }
+
+    public void ShowMerchantScreen()
+    {
+        Debug.Log("Showing merchant screen");
+        merchantCanvas.SetActive(true);
+        ApplyCursorState(true);
+        ingame = false;
+    }
+
+    public void HideMerchantScreen()
+    {
+        Debug.Log("Hiding merchant screen");
+        merchantCanvas.SetActive(false);
+        ApplyCursorState(false);
+        ingame = true;
+    }
 }
